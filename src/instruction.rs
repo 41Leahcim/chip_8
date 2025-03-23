@@ -82,6 +82,32 @@ pub enum Instruction {
     /// Then vx is multiplied by 2.
     /// The 4 most significant bits indicate the register, the 4 least significant bits are ignored
     ShiftLeft(u8),
+
+    /// Skip next instruction if the values of the registers are not equal.
+    /// The 4 most significant bits indicate register x, least significant represent register y.
+    SkipNotEqualReg(u8),
+
+    /// Load the 12-bit address into register I.
+    LoadI(u16),
+
+    /// Add the value of register 0 to the address and jump to the resulting address.
+    JumpAddressOffset(u16),
+
+    /// Generates a random number, ands it with the second byte and stores the result in the
+    /// register indicated by the least significant 4-bits of the first byte.
+    RandRange(u8, u8),
+
+    /// Most significant 4-bits of first byte indicate the x and most significant 4-bits of the
+    /// first byte indicate the y position of the location to start drawing at.
+    /// Draws a number of bytes specified by the least significant 4-bits of the second byte.
+    /// Reads the data to draw from the address indicated by the value of the I register.
+    /// The data is read and displayed as a sprite.
+    /// All data of a sprite is stored consecutively, but displayed as a 5 high x 8 wide image.
+    /// The sprite is drawn by xoring it with the data already stored in that position.
+    /// If any pixels were erased, VF is set to 1, otherwise it's set to 0.
+    /// If a part of the sprite is outside the display coordinates, it wraps around to the oposite
+    /// side of the screen.
+    Draw(u8, u8),
 }
 
 impl From<u16> for Instruction {
@@ -106,6 +132,11 @@ impl From<u16> for Instruction {
             0x8000..=0x8FFF if value & 0xF == 6 => Self::ShiftRight((value >> 4) as u8),
             0x8000..=0x8FFF if value & 0xF == 7 => Self::SubInverted((value >> 4) as u8),
             0x8000..=0x8FFF if value & 0xF == 0xE => Self::ShiftLeft((value >> 4) as u8),
+            0x9000..=0x9FFF if value & 0xF == 0 => Self::SkipNotEqualReg((value >> 4) as u8),
+            0xA000..=0xAFFF => Self::LoadI(value & 0xFFF),
+            0xB000..=0xBFFF => Self::JumpAddressOffset(value & 0xFFF),
+            0xC000..=0xCFFF => Self::RandRange((value >> 8) as u8 & 0xF, value as u8),
+            0xD000..=0xDFFF => Self::Draw((value >> 8) as u8, value as u8),
             _ => todo!(),
         }
     }
