@@ -2,6 +2,7 @@ use std::ops::{Index, IndexMut};
 
 pub struct Memory {
     data: [u8; 0x1000],
+    stack_pointer: u16,
 }
 
 impl Default for Memory {
@@ -153,7 +154,10 @@ impl Memory {
             }
             sprite_index += 1;
         }
-        Self { data }
+        Self {
+            data,
+            stack_pointer: (sprites.len() * sprites[0].len()) as u16,
+        }
     }
 
     pub const fn load(&self, index: u16) -> Option<u8> {
@@ -166,13 +170,36 @@ impl Memory {
     }
 
     pub const fn store(&mut self, index: u16, value: u8) -> bool {
-        match index.checked_sub(0x200) {
-            None | Some(..0x200 | 0x1000..) => false,
-            Some(index) => {
+        match index {
+            ..0x200 | 0x1000.. => false,
+            index => {
                 self.data[index as usize] = value;
                 true
             }
         }
+    }
+
+    pub const fn push(&mut self, address: u16) -> bool {
+        if self.stack_pointer + 2 >= 0x200 || address < 0x200 || address >= 0x1000 {
+            return false;
+        }
+        let address = address.to_ne_bytes();
+        let stack_pointer = self.stack_pointer as usize;
+        self.data[stack_pointer] = address[0];
+        self.data[stack_pointer + 1] = address[1];
+        self.stack_pointer += 2;
+        true
+    }
+
+    pub const fn pop(&mut self) -> Option<u16> {
+        if self.stack_pointer < 82 {
+            return None;
+        }
+        self.stack_pointer -= 2;
+        Some(u16::from_ne_bytes([
+            self.data[self.stack_pointer as usize],
+            self.data[(self.stack_pointer + 1) as usize],
+        ]))
     }
 }
 

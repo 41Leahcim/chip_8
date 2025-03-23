@@ -108,6 +108,14 @@ pub enum Instruction {
     /// If a part of the sprite is outside the display coordinates, it wraps around to the oposite
     /// side of the screen.
     Draw(u8, u8),
+
+    /// Skips next instruction if the key with the value of the least significant 4 bits is
+    /// pressed. Valid keys are 0 - 9 and A - F (case insensitive, ranges inclusive).
+    SkipPressed(u8),
+
+    /// Skips next instruction if the key with the value of the least significant 4 bits isn't
+    /// pressed. Valid keys are 0 - 9 and A - F (case insensitive, ranges inclusive).
+    SkipNotPressed(u8),
 }
 
 impl From<u16> for Instruction {
@@ -137,6 +145,10 @@ impl From<u16> for Instruction {
             0xB000..=0xBFFF => Self::JumpAddressOffset(value & 0xFFF),
             0xC000..=0xCFFF => Self::RandRange((value >> 8) as u8 & 0xF, value as u8),
             0xD000..=0xDFFF => Self::Draw((value >> 8) as u8, value as u8),
+            0xE000..=0xEFFF if value & 0xFF == 0x9E => Self::SkipPressed((value >> 8) as u8 & 0xF),
+            0xE000..=0xEFFF if value & 0xFF == 0xA1 => {
+                Self::SkipNotPressed((value >> 8) as u8 & 0xF)
+            }
             _ => todo!(),
         }
     }
