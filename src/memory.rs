@@ -179,27 +179,24 @@ impl Memory {
         }
     }
 
-    pub const fn push(&mut self, address: u16) -> bool {
-        if self.stack_pointer + 2 >= 0x200 || address < 0x200 || address >= 0x1000 {
+    pub fn push(&mut self, address: u16) -> bool {
+        if self.stack_pointer + 2 >= 0x200 || !(0x200..0x1000).contains(&address) {
             return false;
         }
-        let address = address.to_ne_bytes();
         let stack_pointer = self.stack_pointer as usize;
-        self.data[stack_pointer] = address[0];
-        self.data[stack_pointer + 1] = address[1];
+        self.data[stack_pointer..stack_pointer + 2].copy_from_slice(&address.to_ne_bytes());
         self.stack_pointer += 2;
         true
     }
 
-    pub const fn pop(&mut self) -> Option<u16> {
+    pub fn pop(&mut self) -> Option<u16> {
         if self.stack_pointer < 82 {
             return None;
         }
         self.stack_pointer -= 2;
-        Some(u16::from_ne_bytes([
-            self.data[self.stack_pointer as usize],
-            self.data[(self.stack_pointer + 1) as usize],
-        ]))
+        let mut word = [0; 2];
+        word.copy_from_slice(&self.data[self.stack_pointer as usize..][..2]);
+        Some(u16::from_ne_bytes(word))
     }
 }
 
