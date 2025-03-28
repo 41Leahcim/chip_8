@@ -1,3 +1,6 @@
+//! This module contains the implementation of the instruction set
+
+/// This enum contains all supported instructions
 pub enum Instruction {
     /// Jump to a machine code routine at the specified address (12-bit).
     /// This instruction is only used on the old computers on which Chip-8 was originally
@@ -120,6 +123,7 @@ pub enum Instruction {
 
 impl From<u16> for Instruction {
     fn from(value: u16) -> Self {
+        // Decode the instruction word
         match value {
             0x00E0 => Self::ClearScreen,
             0x00EE => Self::Return,
