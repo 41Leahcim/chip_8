@@ -119,6 +119,24 @@ pub enum Instruction {
     /// Skips next instruction if the key with the value of the least significant 4 bits isn't
     /// pressed. Valid keys are 0 - 9 and A - F (case insensitive, ranges inclusive).
     SkipNotPressed(u8),
+
+    /// Loads the delay timer value into the register (4-bit).
+    LoadRegisterDelayTimer(u8),
+
+    /// Waits for a key to be pressed and stores the value of the pressed key into the register.
+    LoadKeyPress(u8),
+
+    /// Loads the value of the register into the delay timer.
+    LoadDelayTimerRegister(u8),
+
+    /// Loads the value of the register into the sound timer.
+    LoadSoundTimerRegister(u8),
+
+    /// Add the value of the register to the address register.
+    AddAddresssRegister(u8),
+
+    /// Loads the address of the sprite for the value of the register
+    LoadSpriteAddress(u8),
 }
 
 impl From<u16> for Instruction {
@@ -152,6 +170,22 @@ impl From<u16> for Instruction {
             0xE000..=0xEFFF if value & 0xFF == 0x9E => Self::SkipPressed((value >> 8) as u8 & 0xF),
             0xE000..=0xEFFF if value & 0xFF == 0xA1 => {
                 Self::SkipNotPressed((value >> 8) as u8 & 0xF)
+            }
+            0xF000..=0xFFFF if value & 0xFF == 0x07 => {
+                Self::LoadRegisterDelayTimer((value >> 8) as u8 & 0xF)
+            }
+            0xF000..=0xFFFF if value & 0xFF == 0x0A => Self::LoadKeyPress((value >> 8) as u8 & 0xF),
+            0xF000..=0xFFFF if value & 0xFF == 0x15 => {
+                Self::LoadDelayTimerRegister((value >> 8) as u8 & 0xF)
+            }
+            0xF000..=0xFFFF if value & 0xFF == 0x18 => {
+                Self::LoadSoundTimerRegister((value >> 8) as u8 & 0xF)
+            }
+            0xF000..=0xFFFF if value & 0xFF == 0x1E => {
+                Self::AddAddresssRegister((value >> 8) as u8 & 0xF)
+            }
+            0xF000..=0xFFFF if value & 0xFF == 0x29 => {
+                Self::LoadSpriteAddress((value >> 8) as u8 & 0xF)
             }
             _ => todo!(),
         }
