@@ -1,6 +1,6 @@
 //! This module contains the implementation of chip-8 memory
 
-use std::ops::{Index, IndexMut};
+use std::ops::{Index, IndexMut, Range};
 
 /// The memory struct contains the full chip-8 memory and stack pointer
 pub struct Memory {
@@ -237,6 +237,24 @@ impl Memory {
         let mut word = [0; 2];
         word.copy_from_slice(&self.data[self.stack_pointer as usize..][..2]);
         Some(u16::from_ne_bytes(word))
+    }
+
+    /// Takes a slice of memory to load multiple bytes easily and quickly
+    pub fn slice(&self, range: Range<u16>) -> Option<&[u8]> {
+        if range.end <= 0xFFF {
+            Some(&self.data[range.start as usize..range.end as usize])
+        } else {
+            None
+        }
+    }
+
+    /// Takes a mutable slice of memory to store multiple bytes easily and quickly
+    pub fn slice_mut(&mut self, range: Range<u16>) -> Option<&mut [u8]> {
+        if range.start >= 200 && range.end <= 0xFFF {
+            Some(&mut self.data[range.start as usize..range.end as usize])
+        } else {
+            None
+        }
     }
 }
 
