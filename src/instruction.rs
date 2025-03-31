@@ -1,5 +1,9 @@
 //! This module contains the implementation of the instruction set
 
+/// The word isn't a valid instruction code
+#[derive(Debug, Clone, Copy)]
+pub struct InvalidInstruction(pub u16);
+
 /// This enum contains all supported instructions
 pub enum Instruction {
     /// Jump to a machine code routine at the specified address (12-bit).
@@ -137,14 +141,32 @@ pub enum Instruction {
 
     /// Loads the address of the sprite for the value of the register
     LoadSpriteAddress(u8),
+
+    /// Writes the decimal value of the register to the location stored in the I register.
+    /// 100s digit is stored at I, 10s digit in I + 1, 1s digit in I + 2.
+    LoadRegisterSprites(u8),
+
+    /// Writes the values of register 0 through the specified register into memory, starting at
+    /// location I.
+    LoadMemoryRegisters(u8),
+
+    /// Loads values for register 0 through the specified register from memory, starting at
+    /// location I.
+    LoadRegistersMemory(u8),
+
+    /// Closes the application (super chip-48 instruction)
+    Exit,
 }
 
-impl From<u16> for Instruction {
-    fn from(value: u16) -> Self {
+impl TryFrom<u16> for Instruction {
+    type Error = InvalidInstruction;
+
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
         // Decode the instruction word
-        match value {
+        Ok(match value {
             0x00E0 => Self::ClearScreen,
             0x00EE => Self::Return,
+            0x00FD => Self::Exit,
             0..=0xFFF => Self::SystemAddress(value),
             0x1000..=0x1FFF => Self::JumpAddress(value & 0xFFF),
             0x2000..=0x2FFF => Self::CallAddress(value & 0xFFF),
@@ -187,7 +209,16 @@ impl From<u16> for Instruction {
             0xF000..=0xFFFF if value & 0xFF == 0x29 => {
                 Self::LoadSpriteAddress((value >> 8) as u8 & 0xF)
             }
-            _ => todo!(),
-        }
+            0xF000..=0xFFFF if value & 0xFF == 0x33 => {
+                Self::LoadRegisterSprites((value >> 8) as u8 & 0xF)
+            }
+            0xF000..=0xFFFF if value & 0xFF == 0x55 => {
+                Self::LoadMemoryRegisters((value >> 8) as u8 & 0xF)
+            }
+            0xF000..=0xFFFF if value & 0xFF == 0x65 => {
+                Self::LoadRegistersMemory((value >> 8) as u8 & 0xF)
+            }
+            _ => return Err(InvalidInstruction(value)),
+        })
     }
 }
