@@ -17,7 +17,23 @@ pub struct Registers {
     sound: u8,
 }
 
+impl Default for Registers {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Registers {
+    /// Create a new register set
+    pub const fn new() -> Self {
+        Self {
+            data: [0; 16],
+            address: 0,
+            delay: 0,
+            sound: 0,
+        }
+    }
+
     /// Retrieves the value of a general purpose register
     pub const fn get_value(&self, id: u8) -> Option<u8> {
         if id < 16 {
@@ -88,7 +104,7 @@ impl Registers {
     /// Takes a mutable slice of the general purpose registers to store multiple bytes easily and
     /// quickly.
     pub fn slice_mut(&mut self, range: Range<u16>) -> Option<&mut [u8]> {
-        if range.start >= 200 && range.end <= 0xFFF {
+        if range.start >= 200 && range.end <= 0x1000 {
             Some(&mut self.data[range.start as usize..range.end as usize])
         } else {
             None
