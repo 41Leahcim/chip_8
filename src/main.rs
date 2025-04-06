@@ -6,6 +6,18 @@ use minifb::{Key, Window, WindowOptions};
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
 
+fn draw_byte(buffer: &mut [u32], x: usize, y: usize, byte: u8) -> bool {
+    let mut vf = false;
+    for j in 0..8 {
+        let pixel = &mut buffer[y * SCREEN_WIDTH + (x + j) % SCREEN_WIDTH];
+        let value = byte >> (7 - j) & 1;
+        let value = (0..u32::BITS).fold(0, |result, bit| result | (u32::from(value) << bit));
+        vf = vf || value & *pixel != 0;
+        *pixel = value;
+    }
+    vf
+}
+
 fn main() {
     let mut window = Window::new(
         "Chip-8",
@@ -114,8 +126,23 @@ fn main() {
             }
             Instruction::LoadI(address) => *registers.address_mut() = address,
             Instruction::JumpAddressOffset(address) => pointer = address + registers.address(),
-            Instruction::RandRange(_, _) => todo!(),
-            Instruction::Draw(_, _) => todo!(),
+            Instruction::RandRange(reg, anded) => {
+                *registers.get_value_mut(reg & 0xF).unwrap() = rand::random::<u8>() & anded
+            }
+            Instruction::Draw(position, bytes) => {
+                let (x, y) = (
+                    usize::from(registers.get_value(position >> 4).unwrap()),
+                    usize::from(registers.get_value(position & 0xF).unwrap()),
+                );
+                for i in 0..u16::from(bytes & 0xF) {
+                    draw_byte(
+                        &mut buffer,
+                        x + usize::from(i / 5),
+                        (usize::from(i % 5) + y) % SCREEN_HEIGHT,
+                        memory.load(registers.address() + i).unwrap(),
+                    );
+                }
+            }
             Instruction::SkipPressed(_) => todo!(),
             Instruction::SkipNotPressed(_) => todo!(),
             Instruction::LoadRegisterDelayTimer(_) => todo!(),
