@@ -1,7 +1,7 @@
 use std::fs;
 
 use chip_8::{instruction::Instruction, memory::Memory, registers::Registers};
-use minifb::{Window, WindowOptions};
+use minifb::{Key, Window, WindowOptions};
 
 pub const SCREEN_WIDTH: usize = 64;
 pub const SCREEN_HEIGHT: usize = 32;
@@ -14,7 +14,7 @@ fn main() {
         WindowOptions::default(),
     )
     .unwrap();
-    let mut buffer = vec![0; SCREEN_WIDTH * SCREEN_HEIGHT];
+    let mut buffer = [0; SCREEN_WIDTH * SCREEN_HEIGHT];
     let mut memory = Memory::new();
     let mut registers = Registers::new();
     let application = fs::read("roms/RPS.ch8").unwrap();
@@ -23,7 +23,8 @@ fn main() {
         .unwrap()
         .copy_from_slice(&application);
     let mut pointer = 0x200;
-    loop {
+    let mut vf = false;
+    while window.is_open() && !window.is_key_down(Key::Escape) {
         if pointer >= 0xFFF {
             break;
         }
@@ -69,26 +70,50 @@ fn main() {
                 *registers.get_value_mut(reg >> 4).unwrap() =
                     registers.get_value(reg & 0xF).unwrap()
             }
-            Instruction::Or(reg) => {
-                *registers.get_value_mut(reg >> 4).unwrap() |=
-                    registers.get_value(reg & 0xF).unwrap()
+            Instruction::Or(regs) => {
+                *registers.get_value_mut(regs >> 4).unwrap() |=
+                    registers.get_value(regs & 0xF).unwrap()
             }
-            Instruction::And(reg) => {
-                *registers.get_value_mut(reg >> 4).unwrap() &=
-                    registers.get_value(reg & 0xF).unwrap()
+            Instruction::And(regs) => {
+                *registers.get_value_mut(regs >> 4).unwrap() &=
+                    registers.get_value(regs & 0xF).unwrap()
             }
-            Instruction::Xor(reg) => {
-                *registers.get_value_mut(reg >> 4).unwrap() ^=
-                    registers.get_value(reg & 0xF).unwrap()
+            Instruction::Xor(regs) => {
+                *registers.get_value_mut(regs >> 4).unwrap() ^=
+                    registers.get_value(regs & 0xF).unwrap()
             }
-            Instruction::Add(_) => todo!(),
-            Instruction::Sub(_) => todo!(),
-            Instruction::ShiftRight(_) => todo!(),
-            Instruction::SubInverted(_) => todo!(),
-            Instruction::ShiftLeft(_) => todo!(),
-            Instruction::SkipNotEqualReg(_) => todo!(),
-            Instruction::LoadI(_) => todo!(),
-            Instruction::JumpAddressOffset(_) => todo!(),
+            Instruction::Add(regs) => {
+                let right = registers.get_value(regs & 0xF).unwrap();
+                let left = registers.get_value_mut(regs >> 4).unwrap();
+                (*left, vf) = left.overflowing_add(right);
+            }
+            Instruction::Sub(regs) => {
+                let right = registers.get_value(regs & 0xF).unwrap();
+                let left = registers.get_value_mut(regs >> 4).unwrap();
+                (*left, vf) = left.overflowing_sub(right);
+            }
+            Instruction::ShiftRight(regs) => {
+                let register = registers.get_value_mut(regs & 0xF).unwrap();
+                (vf, *register) = (*register & 1 == 1, *register >> 1);
+            }
+            Instruction::SubInverted(regs) => {
+                let right = registers.get_value(regs & 0xF).unwrap();
+                let left = registers.get_value_mut(regs >> 4).unwrap();
+                (*left, vf) = right.overflowing_sub(*left);
+            }
+            Instruction::ShiftLeft(reg) => {
+                let register = registers.get_value_mut(reg & 0xF).unwrap();
+                (vf, *register) = (*register & 0x80 == 0x80, *register << 1);
+            }
+            Instruction::SkipNotEqualReg(regs) => {
+                if registers.get_value(regs & 0xF).unwrap()
+                    != registers.get_value(regs >> 4).unwrap()
+                {
+                    pointer += 2;
+                }
+            }
+            Instruction::LoadI(address) => *registers.address_mut() = address,
+            Instruction::JumpAddressOffset(address) => pointer = address + registers.address(),
             Instruction::RandRange(_, _) => todo!(),
             Instruction::Draw(_, _) => todo!(),
             Instruction::SkipPressed(_) => todo!(),
